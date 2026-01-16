@@ -1,10 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
-
 from app.database import get_db
-from app.models.master import Master
-from app.schemas.master import MasterCreate, MasterResponse
+from app.models import Master
+from app.schemas.master import MasterCreate, MasterUpdate, MasterOut
 from app.routes.auth import get_current_user
 
 router = APIRouter(
@@ -12,68 +10,56 @@ router = APIRouter(
     tags=["master"]
 )
 
-@router.post("", response_model=MasterResponse)
-def create_master(
-    data: MasterCreate,
-    db: Session = Depends(get_db),
-    user=Depends(get_current_user)
-):
-    item = Master(**data.dict())
-    db.add(item)
+# =========================
+# CREATE
+# =========================
+@router.post("/", response_model=MasterOut)
+def create_master(data: MasterCreate, db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
+    new_master = Master(**data.dict())
+    db.add(new_master)
     db.commit()
-    db.refresh(item)
-    return item
+    db.refresh(new_master)
+    return new_master
 
-@router.get("", response_model=list[MasterResponse])
-def get_master(
-    page: int = 1,
-    limit: int = 10,
-    db: Session = Depends(get_db),
-    user=Depends(get_current_user)
-):
-    offset = (page - 1) * limit
-    return db.query(Master).offset(offset).limit(limit).all()
-    return data
+# =========================
+# READ ALL
+# =========================
+@router.get("/", response_model=list[MasterOut])
+def get_all_master(db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
+    return db.query(Master).all()
 
-@router.get("/{id}", response_model=MasterResponse)
-def get_master_by_id(
-    id: int,
-    db: Session = Depends(get_db),
-    user=Depends(get_current_user)
-):
-    item = db.query(Master).filter(Master.id == id).first()
-    if not item:
-        raise HTTPException(status_code=404, detail="Data not found")
-    return item
+# =========================
+# READ BY ID
+# =========================
+@router.get("/{master_id}", response_model=MasterOut)
+def get_master(master_id: int, db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
+    master = db.query(Master).filter(Master.id == master_id).first()
+    if not master:
+        raise HTTPException(status_code=404, detail="Master not found")
+    return master
 
-@router.put("/{id}", response_model=MasterResponse)
-def update_master(
-    id: int,
-    data: MasterCreate,
-    db: Session = Depends(get_db),
-    user=Depends(get_current_user)
-):
-    item = db.query(Master).filter(Master.id == id).first()
-    if not item:
-        raise HTTPException(status_code=404, detail="Data not found")
-
-    item.name = data.name
-    item.description = data.description
+# =========================
+# UPDATE
+# =========================
+@router.put("/{master_id}", response_model=MasterOut)
+def update_master(master_id: int, data: MasterUpdate, db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
+    master = db.query(Master).filter(Master.id == master_id).first()
+    if not master:
+        raise HTTPException(status_code=404, detail="Master not found")
+    for key, value in data.dict(exclude_unset=True).items():
+        setattr(master, key, value)
     db.commit()
-    db.refresh(item)
-    return item
+    db.refresh(master)
+    return master
 
-@router.delete("/{id}")
-def delete_master(
-    id: int,
-    db: Session = Depends(get_db),
-    user=Depends(get_current_user)
-):
-    item = db.query(Master).filter(Master.id == id).first()
-    if not item:
-        raise HTTPException(status_code=404, detail="Data not found")
-
-    db.delete(item)
+# =========================
+# DELETE
+# =========================
+@router.delete("/{master_id}")
+def delete_master(master_id: int, db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
+    master = db.query(Master).filter(Master.id == master_id).first()
+    if not master:
+        raise HTTPException(status_code=404, detail="Master not found")
+    db.delete(master)
     db.commit()
-    return {"message": "Deleted"}
-
+    return {"detail": "Master deleted successfully"}
