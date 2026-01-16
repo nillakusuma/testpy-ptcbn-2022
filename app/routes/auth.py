@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
-from pydantic import BaseModel
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
 
@@ -12,30 +11,18 @@ router = APIRouter(
 # =====================
 # CONFIG JWT
 # =====================
-SECRET_KEY = "SECRET123"   # untuk test (nanti boleh taruh di .env)
+SECRET_KEY = "SECRET123"   # nanti pindah ke .env
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 # =====================
-# SCHEMA
-# =====================
-class LoginRequest(BaseModel):
-    username: str
-    password: str
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-
-# =====================
 # JWT UTILS
 # =====================
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -56,15 +43,20 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 # =====================
 # ENDPOINTS
 # =====================
-@router.post("/login", response_model=Token)
-def login(data: LoginRequest):
-    # PASSWORD BYPASS SESUAI SOAL
-    if data.password != "CBN123!":
-        raise HTTPException(status_code=401, detail="Username / Password salah")
+@router.post("/login")
+def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    username = form_data.username
+    password = form_data.password
+
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="Username dan password wajib")
+
+    # sementara hardcode (nanti ganti DB)
+    if username != "nilla" or password != "CBN123!":
+        raise HTTPException(status_code=401, detail="Username atau password salah")
 
     access_token = create_access_token(
-        data={"sub": data.username},
-        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        data={"sub": username}
     )
 
     return {
