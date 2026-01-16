@@ -24,7 +24,7 @@
 
 ```bash
 
-git clone https://github.com/nillakusumadewi/testpy-ptcbn-2022.git
+git clone https://github.com/nillakusuma/testpy-ptcbn-2022.git
 
 cd testpy-ptcbn-2022
 
